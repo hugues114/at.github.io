@@ -1,0 +1,267 @@
+---
+title: "Rendu d'Analyse Textuelle"
+description: Travail sur un corpus de donnée portant sur l'évolution des titres de thèses en sociologie en France de 2000-2020
+date: today
+author: 
+  - name: Hugues Arnasalon
+    Master: M2 QESS
+title-block-banner: true
+format: 
+  html:
+    theme: flatly
+    code-fold: true
+    toc: true
+    number-sections: true
+bibliography: AT.bib
+link-citation: yes
+csl: apa-single-spaced.csl
+editor: visual
+---
+
+# Rendu Analyse Textuelle : L'évolution des titres de thèses en sociologie en France de 2000-2020
+
+## Description des données
+
+Pour permettre l'analyse de l'évolution des titres de thèses, les données utilisées ont été collectées sur le site de theses.fr, plateforme de recherche des doctorats français gérée par l'Agence Bibliographique de l'Enseignement Supérieur (ABES). Le but de cette base de données était de constituer un inventaire national exhaustif de toutes les thèses de doctorat soutenues en France depuis 1985, indépendamment de la discipline concernée. La base de données comprenait 429 404 individus associés à 172 variables."
+
+::: callout-note
+Plus d'informations à propos de la base de donnée [ici.](https://www.data.gouv.fr/fr/datasets/theses-soutenues-en-france-depuis-1985/)
+:::
+
+Les méthodes de la statistique textuelle sont particulièrement adaptées à l'analyse de textes tels qu'ils ont été rédigés ou collectés, sans altération de leur contenu. Dans le cadre de cette étude, nous utiliserons ces méthodes pour analyser les titres de thèses en sociologie et tenter de comprendre le sens des mots et la structure des phrases qui les composent. La statistique textuelle permet d'objectiver et de synthétiser ces informations de manière à établir une représentation commune et diversifiée à la fois (Garnier, 2010).
+
+## Construction de la base de donnée
+
+Pour répondre à notre problématique de recherche, qui sera présentée ultérieurement, nous avons sélectionné cinq variables parmi celles proposées par la base de données : le prénom de l'auteur de la thèse, le prénom du directeur de thèse, le prénom du président de jury de la thèse, la date de soutenance et le titre de la thèse en français. Étant donné que les thèses ont été soutenues dans plusieurs universités sur l'ensemble du territoire, nous nous sommes intéressés à savoir s'il existe une différence entre les universités de la région Île-de-France et les autres universités. Pour ce faire, nous avons référencé toutes les universités de la région [Île-de-France](https://orientation-carriere.com/articles/universites-paris-idf.php) et regroupé les autres universités dans une sous-base de données.
+
+::: callout-important
+Il est aussi important de noter que certaines grandes écoles ont étés rajoutées à la liste : EHESS ; ENS ; Sciencepo ; EPHE ; Agro paris tech ; Ecole des mines
+:::
+
+En conséquence, nous avons créé deux bases de données. La première regroupe l'ensemble des thèses soutenues dans les universités de la région Île-de-France, soit 1336 observations, et la deuxième comprend toutes les thèses soutenues dans une université en dehors de cette région, soit 1497 observations. Il convient de souligner que les titres de thèses sont courts et n'ont pas besoin d'être découpés. En outre, il est à noter que la base de données concerne uniquement les thèses soutenues au cours des vingt dernières années, c'est-à-dire entre 2000 et 2020 et que la discipline retenue est la sociologie.
+
+```{r}
+#| echo: false
+#| include: false
+library(dplyr)
+library(questionr)
+library(tidyverse)
+library(R.temis)
+library(devtools)
+library(RColorBrewer)
+
+```
+
+```{r construction base IDF, eval=FALSE, include=FALSE}
+#| echo: false
+#| include: false
+# theses_soutenues <- read_csv("theses-soutenues.csv") - import dataset
+
+library(dplyr)
+library(questionr)
+library(tidyverse)
+library(R.temis)
+
+b <- theses_soutenues
+b <- filter(b, date_soutenance >= "2000-01-01", date_soutenance <="2020-01-01")# filtrer par la date
+b <- filter(b, discipline.fr == "Sociologie")
+
+# définir la liste des universités idf
+
+val_idf <- c("03082057X", "19077990X", "027918459", "026375478", "028237080", "030820529", "030820499", "027361802", "026403587", "028021037", "02640463X", "027361837", "026403633", "026404788", "027542084", "026403552", "027787109", "121855465", "182292592", "139408088", "027404978", "031738419")
+
+b <- filter(b, etablissements_soutenance.0.idref %in% val_idf) #filtrer par code d'établissement
+
+
+b <- b[!is.na(b$titres.fr), ] # retirer les NA pour les titres de thèses
+
+# selection des variables d'intérêts
+
+b <- select(b, auteurs.0.prenom, date_soutenance, directeurs_these.0.prenom, president_jury.prenom, titres.fr)
+
+write.csv(b, "baseIDF.csv", sep = ";")
+
+head(b)
+
+```
+
+```{r construction base NON_IDF, eval=FALSE, include=FALSE}
+#| echo: false
+#| include: false
+# theses_soutenues <- read_csv("theses-soutenues.csv") - import dataset
+
+
+a <- theses_soutenues
+a <- filter(a, date_soutenance >= "2000-01-01", date_soutenance <="2020-01-01")# filtrer par la date
+a <- filter(a, discipline.fr == "Sociologie") #filtrer par discipline
+
+#filtrer une liste de valeurs exlcuant les universités parisiennes
+
+a <- filter(a, !etablissements_soutenance.0.idref %in% val_idf)
+
+
+a <- a[!is.na(a$titres.fr), ] # retirer les NA pour les titres de thèses
+
+# selection des variables d'intérêts
+
+a <- select(a, auteurs.0.prenom, date_soutenance, directeurs_these.0.prenom, president_jury.prenom, titres.fr)
+
+write.csv(a, "baseAUTRE.csv", sep = ";")
+
+head(a)
+
+```
+
+```{r library and data, warning = FALSE, message = FALSE}
+
+b <- read_csv('https://raw.githubusercontent.com/hugues114/M2_Analyse-textuelle/main/base.csv') %>%
+  drop_na()
+  head(b)
+
+```
+
+::: callout-caution
+**Dans cette table, les valeurs manquantes ont étés retirées afin de pouvoir donner un apperçu du jeu de donnée construit.**
+:::
+
+```{r}
+#| echo: false
+#| include: false
+b <- read_csv('https://raw.githubusercontent.com/hugues114/M2_Analyse-textuelle/main/base.csv')
+
+
+```
+
+L'analyse textuelle descriptive, qui utilise à la fois un nuage de mots, un graphe de mots et un dictionnaire, permet de répondre à la question suivante : Quels sont les thèmes de thèses les plus fréquemment soumis en sociologie pendant la période considérée en Île-de-France et ailleurs, et que nous apprennent ces titres ? Le premier de ces outils permet de mettre en évidence les occurrences les plus fréquentes dans le corpus, tandis que le second nous permet de dégager les co-occurrences (analyse de similarité) pour approfondir notre analyse.
+
+# Analyse du corpus et résultats obtenus
+
+1.  Le lexique est l'ensemble des mots présents dans un corpus, il peut être affiché soit par ordre alphabétique ou par ordre de fréquence décroissante d'apparition des mots. La lecture du lexique est importante afin de comprendre le corpus et repérer la présence et la fréquence des mots utilisés, rechercher un mot spécifique et sa fréquence d'apparition, et comparer la fréquence de différents mots. Dans un premier temps, la base de thèses soutenues **hors universités IDF** sera analysée. Voici un aperçu du lexique complet, sans inclure les mots outils ni les chiffres :
+
+```{r}
+
+corpus_autre <- import_corpus("https://raw.githubusercontent.com/hugues114/M2_Analyse-textuelle/main/baseAUTRE.csv", format = "csv", textcolumn = 6, language="fr")
+
+# création du tableau lexical
+tb_autre <- build_dtm (corpus_autre, remove_stopwords = T) ##on garde les mots valises
+tb_autre
+inspect(tb_autre)
+
+```
+
+*Le résultat nous indique que la matrice de termes de documents comprend 1497 documents et 4694 termes différents, que le nombre de valeurs non nulles (non-sparse) est de 13996, et le nombre de valeurs nulles (sparse) est de 7012922. La matrice est très creuse, avec un pourcentage très élevé de valeurs nulles, cela peut être le résultat de la présence de nombreux termes uniques dans les documents, ce qui entraîne une faible co-occurrence de termes dans les documents. Aussi,le terme le plus long dans la matrice a une longueur de 23 caractères.*
+
+```{r}
+
+#dico
+dic <- dictionary(tb_autre, remove_stopwords = T)
+
+
+head(frequent_terms(tb_autre), 20) # les 20 termes les plus fréquents
+
+
+```
+
+On se rend compte que dans les 20 termes les plus fréquents dans les titres de thèses soutenues hors IDF, le terme *'travail'* apparaît 101 fois, on peut donc émettre l'hypothèse que plusieurs des thèses traitent de la pratique du travail ou d'une sociologie du travail.
+
+```{r}
+head(concordances(corpus_autre, tb_autre, "travail"), 5)
+
+cooc_terms(tb_autre, "politiques")
+
+```
+
+::: callout-note
+Ce tableau de résultats d'analyse de cooccurrences de mots dans un texte inclut plusieurs colonnes de données, qui sont les suivantes :
+
+    % Term/Cooc. : Pourcentage de la fréquence d'un mot par rapport à sa fréquence de cooccurrence avec les autres mots.
+    % Cooc./Term : Pourcentage de la fréquence de cooccurrence d'un mot par rapport à sa fréquence totale dans le texte.
+    Global % Cooc. : Pourcentage de la fréquence de cooccurrence d'un mot par rapport à la fréquence totale de cooccurrence de tous les mots dans le texte.
+    Global : Nombre total de cooccurrences de tous les mots dans le texte.
+    t value : Valeur t statistique pour chaque mot.
+    Prob. : Probabilité associée à la valeur t, indiquant la significativité de la cooccurrence du mot dans le texte.
+
+Le tableau présente une liste de mots classés par ordre décroissant de fréquence de cooccurrence dans le texte. Pour chaque mot, les données indiquent sa fréquence relative et sa significativité statistique en tant que cooccurrence dans le texte. Par exemple, pour le mot "politiques", le pourcentage de sa fréquence par rapport à sa fréquence de cooccurrence est de 9,22%, sa fréquence de cooccurrence par rapport à sa fréquence totale est de 100% et sa fréquence de cooccurrence par rapport à la fréquence totale de cooccurrence de tous les mots dans le texte est de 0,34%. La valeur t associée à ce mot est de 49 et la probabilité associée est de 0,0000, indiquant que la cooccurrence de ce mot dans le texte est très significative.
+:::
+
+Le recours au nuage de mots permet de visualiser de manière efficace et attrayante les termes les plus fréquents ou pertinents dans l'ensemble des titres de thèses soutenues hors du département île de France. En effet, cette technique constitue une solution pratique pour extraire et présenter de manière synthétique les informations pertinentes contenues dans ce corpus.
+
+```{r}
+library(RColorBrewer)
+cloud<-word_cloud(tb_autre, min.freq = 1, colors=brewer.pal(8, "Dark2"))
+
+```
+
+Ce wordcloud représente les mots les plus fréquemment utilisés, on peut voir que les mots les plus visibles sont "cas", "sociologie" et "france", ce qui indique qu'ils sont très présents dans les textes. D'autres mots importants incluent "travail", "analyse" et "pratiques", qui sont liés à l'étude de la société et de ses structures et processus. On peut également voir que les mots "construction", "sociale" et "sociologique" sont fréquemment utilisés, suggérant que l'approche de ces textes est axée sur la façon dont la société et ses institutions sont construites et maintenues. Enfin, on peut remarquer que les mots "enjeux", "politique" et "politiques" apparaissent souvent, indiquant que la politique et les questions de pouvoir sont également des thèmes importants dans ces textes.
+
+2.  Lorsqu'on répète le même résultat pour la base de donnée avec les **thèses soutenues par les universités d'IDF**, on peut constater ceci :
+
+```{r}
+
+corpus2 <- import_corpus("https://raw.githubusercontent.com/hugues114/M2_Analyse-textuelle/main/IDF.csv", format = "csv", textcolumn = 6, language="fr")
+
+# création du tableau lexical
+tb_idf <- build_dtm (corpus2, remove_stopwords = T) ##on garde les mots valises
+tb_idf
+
+```
+
+::: callout-note
+Analyse tableau lexicale : La matrice DocumentTermMatrix contient 1336 documents et 4309 termes. Il y a 12578 entrées non nulles sur un total de 5744246 entrées, ce qui représente une sparsity (ou densité) de 100%. La longueur maximale d'un terme est de 25 caractères, et le poids de chaque terme est basé sur sa fréquence d'apparition (tf : term frequency).
+:::
+
+```{r}
+#dicoIDF
+dic_idf <- dictionary(tb_idf, remove_stopwords = T)
+
+
+head(frequent_terms(tb_idf), 20) # les 20 termes les plus fréquents
+```
+
+Analyse des termes le plus fréquents : Il ressort de l'analyse des 20 termes les plus fréquents dans les titres de thèses soutenues hors de la région Île-de-France que le terme **travail** apparaît fréquemment, avec un total de 106 occurrences. Cela laisse supposer que de nombreuses thèses portent sur la pratique du travail ou sur une sociologie du travail. Toutefois, il convient de noter que les résultats de cette analyse sont similaires à ceux obtenus pour les thèses soutenues en Île-de-France, à ceci près que cette dernière catégorie comprend en outre les termes **femmes** et **jeunes** parmi les plus fréquents avec 47 occurences. Il semblerait donc que les thèses soutenues en Île-de-France traitent davantage de sujets liés aux femmes et aux jeunes.
+
+```{r}
+
+concordances(corpus2, tb_idf, "femmes")
+cooc_terms(tb_idf, "femmes")
+```
+
+::: callout-note
+Parmi les réponses contenant le mot "femmes", ce mot représente 10% des occurrences et 100% des réponses qui contiennent "femmes" contiennent aussi "chefs".
+:::
+
+```{r}
+concordances(corpus2, tb_idf, "jeunes")
+cooc_terms(tb_idf, "jeunes")
+
+```
+
+::: callout-note
+Pour le terme "jeunes" : - Le terme "jeunes" apparaît dans 100% des documents où il cooccure avec un autre terme. - Dans 100% des documents où "jeunes" apparaît, il cooccure avec un autre terme - "Jeunes" apparaît dans 36.598661% de l'ensemble des documents - La valeur de t pour "jeunes" est de 47, ce qui signifie que sa fréquence d'apparition est significativement différente de celle d'autres termes - La probabilité associée à cette valeur de t est de 0, ce qui indique que la différence de fréquence d'apparition de "jeunes" par rapport aux autres termes est très significative.
+:::
+
+```{r}
+cloud<-word_cloud(tb_idf, min.freq = 1, colors=brewer.pal(8, "Dark2"))
+
+```
+
+Le wordcloud présente les termes les plus fréquents ou pertinents dans un corpus de textes sur la sociologie en France. On peut constater que les mots "france", "cas" et "sociologie" sont les plus représentatifs, tandis que les termes "entre", "travail" et "analyse" sont également présents avec une fréquence significative et sont liés à l'analyse des structures et processus sociaux. Les termes "étude", "sociale" et "sociologique" sont également fréquemment utilisés, indiquant une focalisation sur l'analyse de la société et de ses phénomènes. En outre, les mots "femmes", "jeunes" et "sociologique" sont présents avec une fréquence notable, témoignant de l'intérêt pour ces groupes de population et cette discipline dans ces textes. Enfin, bien que présents avec une fréquence relativement faible, les termes "action" et "épreuve" pourraient être considérés comme des mots clés dans certains contextes.
+
+# Comparaisons nuage de mots 
+
+
+::: {layout-ncol=2}
+![Nuage de mots thèses soutenues IDF](https://raw.githubusercontent.com/hugues114/M2_Analyse-textuelle/main/000002.png){#fig-wordcloud}
+![Nuage de mots thèses soutenues hors IDF](https://raw.githubusercontent.com/hugues114/M2_Analyse-textuelle/main/000001.png){#fig-wordcloud1}
+:::
+
+En comparant ces deux nuages de mots, nous pouvons nous interroger sur la différenciation spatiale de la recherche en France et sur le rôle des facteurs institutionnels et territoriaux dans la production de thèses et de recherche académique. Ces facteurs peuvent inclure des éléments tels que la qualité des établissements de recherche et d'enseignement supérieur, le niveau de financement et de soutien à la recherche, la présence de centres de recherche de renom, la densité de la population, la présence de grandes entreprises et de centres de recherche, l'accessibilité des réseaux de transport, etc. Par exemple, une région avec une forte concentration d'établissements de recherche de qualité et de centres de recherche de renom pourrait être plus attractive pour les chercheurs et les doctorants, ce qui pourrait se traduire par une production de thèses et de recherche plus importante dans cette région. Elle peut alors se traduire en production de thèses 
+
+
+# Conclusion
+
+
+
+```{r}
+terms_graph(tb_idf, vertex.label.cex = 0.5, interactive = F)
+```
